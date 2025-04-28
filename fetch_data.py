@@ -214,7 +214,7 @@ def process_auctions(all_auctions):
 
             item_id = name_to_id[item_name]
             
-        price = auction["starting_bid"]
+        price = round(auction["starting_bid"], 1)
 
         if item_id not in lowest_prices or price < lowest_prices[item_id]["price"]:
             lowest_prices[item_id] = {"item_id": item_id, "price": price}
@@ -263,8 +263,8 @@ def process_bazaar(products):
         if product_id not in all_item_ids:
             continue
 
-        buy_price = product_info.get("quick_status", {}).get("buyPrice")
-        sell_price = product_info.get("quick_status", {}).get("sellPrice")
+        buy_price = round(product_info.get("quick_status", {}).get("buyPrice"), 1)
+        sell_price = round(product_info.get("quick_status", {}).get("sellPrice"), 1)
 
         if buy_price is not None and sell_price is not None:
             filtered_data.append({
