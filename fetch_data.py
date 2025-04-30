@@ -57,9 +57,9 @@ allowed_unicode = [
 # Create a string of allowed unicode characters
 allowed_unicode_str = ''.join(allowed_unicode)
 
-# Build the pattern: match anything that is NOT a letter, number, space, or allowed unicode
+# Allow letters, digits, space, brackets, parentheses, hyphen, apostrophe, dot, and allowed Unicode
 allowed_pattern = re.compile(
-    rf"[^a-zA-Z0-9 \[\]\(\)'\-{re.escape(allowed_unicode_str)}]",
+    rf"[^a-zA-Z0-9 \[\]\(\)\-'\.{re.escape(allowed_unicode_str)}]",
     flags=re.UNICODE
 )
 
