@@ -1,4 +1,6 @@
-skipped_items.json
+skipped_items_bazaar.json
+skipped_items_auction.json
 viewer1.py
 viewer1.1.py
 viewer1.2.py
+viewer1.3.py

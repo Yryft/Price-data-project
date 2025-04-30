@@ -67,7 +67,7 @@ ITEMS_FILE = "items.json"
 DB_FILE = "prices.db"
 
 MAX_WORKERS = 10  # Number of threads for auctions
-SLEEP_BETWEEN_CYCLES = 3600  # 1 hour
+SLEEP_BETWEEN_CYCLES = 1200  # 20min
 
 # === SETUP DATABASE ===
 
@@ -181,7 +181,6 @@ def normalize_pet_name(item_name):
 
 def process_auctions(all_auctions):
     lowest_prices = {}
-    skipped_items_nb = 0
     skipped_items = []
     skipped_items.append(name_to_id)
 
@@ -199,7 +198,6 @@ def process_auctions(all_auctions):
             if normalized_name in name_to_id:
                 item_id = name_to_id[normalized_name]
             else:
-                skipped_items_nb += 1
                 skipped_items.append(item_name)
                 continue
 
@@ -208,7 +206,6 @@ def process_auctions(all_auctions):
             if item_name not in name_to_id:
                 item_name = strip_reforge(item_name, category)
                 if item_name not in name_to_id:
-                    skipped_items_nb += 1
                     skipped_items.append(item_name)
                     continue
 
@@ -219,10 +216,10 @@ def process_auctions(all_auctions):
         if item_id not in lowest_prices or price < lowest_prices[item_id]["price"]:
             lowest_prices[item_id] = {"item_id": item_id, "price": price}
             
-    with open("skipped_items.json", "w") as f:
+    with open("skipped_items_auction.json", "w") as f:
         json.dump(skipped_items, f, indent=4)
         
-    print(f"Skipped {skipped_items_nb} items (not in item database) Debug in skipped_items.json.")
+    print(f"Skipped {len(skipped_items)} auction items (no match found) Debug log in skipped_items.json.")
     return list(lowest_prices.values())
 
 # === SAVE AUCTION DATA ===
@@ -257,12 +254,10 @@ def fetch_bazaar():
 
 def process_bazaar(products):
     filtered_data = []
+    skipped_items = []
 
     for product_id, product_info in products.items():
-        # Only insert products that are in your item list
-        if product_id not in all_item_ids:
-            continue
-
+        
         buy_price = round(product_info.get("quick_status", {}).get("buyPrice"), 1)
         sell_price = round(product_info.get("quick_status", {}).get("sellPrice"), 1)
 
@@ -272,7 +267,13 @@ def process_bazaar(products):
                 "buy_price": buy_price,
                 "sell_price": sell_price
             })
+        else:
+            skipped_items.append(product_id)
 
+    with open("skipped_items_bazaar.json", "w") as f:
+        json.dump(skipped_items, f, indent=4)
+
+    print(f"Skipped {len(skipped_items)} Bazaar items (no match found) Debug log in skipped_items.json.")
     return filtered_data
 
 # === SAVE BAZAAR DATA ===
