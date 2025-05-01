@@ -1,12 +1,18 @@
-import json
-import sqlite3
-import time
-import re
+import json, os , sqlite3, time, re, requests
 from datetime import datetime
-import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # === CONFIGURATION ===
+
+# Constants
+ITEMS_FILE = "items.json"
+DB_FILE = "prices.db"
+
+BACKUP_DIR = "backups"
+MAX_BACKUPS=50
+
+MAX_WORKERS = 10  # Number of threads for auctions
+SLEEP_BETWEEN_CYCLES = 1200  # 20min
 
 # Define reforge lists
 reforges = {
@@ -63,11 +69,8 @@ allowed_pattern = re.compile(
     flags=re.UNICODE
 )
 
-ITEMS_FILE = "items.json"
-DB_FILE = "prices.db"
-
-MAX_WORKERS = 10  # Number of threads for auctions
-SLEEP_BETWEEN_CYCLES = 1200  # 20min
+# Ensure backup directory exists
+os.makedirs(BACKUP_DIR, exist_ok=True)
 
 # === SETUP DATABASE ===
 
@@ -95,6 +98,35 @@ c.execute('''
 
 conn.commit()
 
+# === BACKUP DATABASE ===
+def backup_db():
+    print("\n===Backing up database...===")
+    # Get list of all files in the backup directory with their modification times
+    files = [
+    (f, os.path.getmtime(os.path.join(BACKUP_DIR, f)))
+    for f in os.listdir(BACKUP_DIR)
+    if os.path.isfile(os.path.join(BACKUP_DIR, f))
+    ]
+    
+    # Sort by modification time (oldest first)
+    files.sort(key=lambda x: x[1])
+    # Delete oldest files if more than max_backups
+    if len(files) > MAX_BACKUPS:
+        files_to_delete = files[:len(files) - MAX_BACKUPS]
+        for file, _ in files_to_delete:
+            full_path = os.path.join(BACKUP_DIR, file)
+            os.remove(full_path)
+            print(f"Deleted: {full_path}")
+    # Create a timestamped backup of the main database.
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    backup_path = os.path.join(BACKUP_DIR, f"prices_{timestamp}.db")
+    # Use SQLite backup API
+    dest = sqlite3.connect(backup_path)
+    with dest:
+        conn.backup(dest)
+    dest.close()
+    print(f"Backup saved to {backup_path}")
+    
 # === LOAD ITEMS ===
 
 with open(ITEMS_FILE, "r") as f:
@@ -348,7 +380,8 @@ def main_loop():
             
         # Detect price spikes
         detect_price_spikes()
-        
+        # Backup after each cycle
+        backup_db()
         print(f"Sleeping for {SLEEP_BETWEEN_CYCLES/60:.0f} minutes...\n")
         time.sleep(SLEEP_BETWEEN_CYCLES)
 
